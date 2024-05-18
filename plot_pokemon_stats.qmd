@@ -20,7 +20,7 @@ suppressMessages({
 
 # Download data from pokeapi
 
-```{r download data}
+```{r download data, echo = FALSE}
 # Define the color palette for Pokémon types
 type_colors <- list(
   normal = '#A8A77A',
@@ -106,7 +106,7 @@ image_html <- function(url) {
 }
 
 # Create the interactive table with reactable and reactablefmtr
-reactable(
+pokemon_table <- reactable(
   pokemon_data,
   columns = list(
     id = colDef(name = "#", align = "center"),
@@ -179,5 +179,9 @@ reactable(
     td = list(verticalAlign = "middle")
   )
 )
+
+
+# Save the table as a standalone HTML widget
+htmlwidgets::saveWidget(pokemon_table, "datasets/pokemon_table.html", selfcontained = TRUE)
 
 ```
