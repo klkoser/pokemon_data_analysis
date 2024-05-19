@@ -4,7 +4,9 @@ format: html
 editor: visual
 ---
 
+
 # Library Packages
+
 
 ```{r setup, include=FALSE}
 suppressMessages({
@@ -14,12 +16,13 @@ suppressMessages({
   library(htmlwidgets)
   library(jsonlite)
   library(httr)
-  library(htmltools)
 })
 ```
 
 
+
 # Download data from pokeapi
+
 
 ```{r download data, echo = FALSE}
 # Define the color palette for Pokémon types
@@ -188,28 +191,6 @@ htmlwidgets::saveWidget(pokemon_table, "datasets/pokemon_table.html", selfcontai
 ```
 
 ```{r}
-# Define the color palette for Pokémon types
-type_colors <- list(
-  normal = '#A8A77A',
-  fire = '#EE8130',
-  water = '#6390F0',
-  electric = '#F7D02C',
-  grass = '#7AC74C',
-  ice = '#96D9D6',
-  fighting = '#C22E28',
-  poison = '#A33EA1',
-  ground = '#E2BF65',
-  flying = '#A98FF3',
-  psychic = '#F95587',
-  bug = '#A6B91A',
-  rock = '#B6A136',
-  ghost = '#735797',
-  dragon = '#6F35FC',
-  dark = '#705746',
-  steel = '#B7B7CE',
-  fairy = '#D685AD'
-)
-
 # Function to get Pokémon data by ID
 get_pokemon_data <- function(id) {
   url <- paste0("https://pokeapi.co/api/v2/pokemon/", id)
@@ -225,8 +206,8 @@ get_pokemon_species_data <- function(id) {
 }
 
 # Fetch data for the first 50 Pokémon (adjust the range as needed)
-pokemon_list <- lapply(1:302, get_pokemon_data)
-species_list <- lapply(1:302, get_pokemon_species_data)
+pokemon_list <- lapply(1:50, get_pokemon_data)
+species_list <- lapply(1:50, get_pokemon_species_data)
 
 # Extract relevant data, including sprites, and create a dataframe
 extract_data <- function(pokemon, species) {
@@ -243,24 +224,24 @@ extract_data <- function(pokemon, species) {
   type2 <- ifelse(length(types) == 2, types[2], "")
   
   data.frame(
-    front_default = sprites$front_default,
     id = pokemon$id,
     name = pokemon$name,
+    front_default = sprites$front_default,
     type1 = type1,
     type2 = type2,
-    abilities = paste(abilities, collapse = ", "),
+    height = pokemon$height,
+    weight = pokemon$weight,
+    base_experience = pokemon$base_experience,
     hp = stats[[1]]$base_stat,
     attack = stats[[2]]$base_stat,
     defense = stats[[3]]$base_stat,
     sp_atk = stats[[4]]$base_stat,
     sp_def = stats[[5]]$base_stat,
     speed = stats[[6]]$base_stat,
+    abilities = paste(abilities, collapse = ", "),
+    egg_cycles = egg_cycles,
     legendary = legendary,
     mythical = mythical,
-    height = pokemon$height,
-    weight = pokemon$weight,
-    base_experience = pokemon$base_experience,
-    egg_cycles = egg_cycles,
     base_happiness = base_happiness,
     stringsAsFactors = FALSE
   )
@@ -272,42 +253,36 @@ pokemon_data <- do.call(rbind, combined_data)
 
 # Function to create image HTML
 image_html <- function(url) {
-  return(paste0('<img src="', url, '" height="80" width="80">'))  # Adjusted size
+  return(paste0('<img src="', url, '" height="42">'))
 }
 
-# Function to color the cells based on type
-type_color <- function(value) {
-  if (is.na(value) || value == "NA") {
-    return("")
-  }
-  color <- type_colors[[tolower(value)]]
-  if (!is.null(color)) {
-    return(paste0('<span style="color: white; background-color: ', color, '; padding: 4px; border-radius: 4px;">', value, '</span>'))
-  }
-  return(value)
-}
 
+# Function to style cells based on Pokémon type
+type_color_style <- function(type) {
+  if (type %in% names(type_colors)) {
+    list(background = type_colors[[type]], color = "white")
+  } else {
+    NULL
+  }
+}
 
 # Create the interactive table with reactable and reactablefmtr
 pokemon_table <- reactable(
-  theme = default(centered = T, font_size =16, header_font_size = 18, cell_padding = 3),
   pokemon_data,
   columns = list(
-    id = colDef(name = "#", align = "center", ),
-    front_default = colDef(name = "", align = "center", filterable = FALSE, 
-                         #  style = list(padding = "4px"),  # Adjust padding
-                           cell = function(value) {
-                             image_html(value)
-                           }, html = TRUE),
-    name = colDef(name = "Name", align = "center", ),
-    type1 = colDef(name = "Type 1", align = "center", cell = function(value) {
-      htmltools::div(style = type_color(value), value)
+    id = colDef(name = "#", align = "center", headerStyle = list(textAlign = "center")),
+    front_default = colDef(name = "Image", align = "center", headerStyle = list(textAlign = "center"), cell = function(value) {
+      image_html(value)
+    }, html = TRUE),
+    name = colDef(name = "Name", headerStyle = list(textAlign = "center")),
+    type1 = colDef(name = "Type 1", headerStyle = list(textAlign = "center"), cell = function(value) {
+      div(style = type_color_style(value), value)
     }),
-    type2 = colDef(name = "Type 2", align = "center", cell = function(value) {
-      htmltools::div(style = type_color(value), value)
+    type2 = colDef(name = "Type 2", headerStyle = list(textAlign = "center"), cell = function(value) {
+      div(style = type_color_style(value), value)
     }),
-    abilities = colDef(name = "Abilities", align = "center", width = 150),
-    hp = colDef(name = "HP", align = "center", cell = data_bars(pokemon_data, 
+    abilities = colDef(name = "Abilities", headerStyle = list(textAlign = "center")),
+    hp = colDef(name = "HP", align = "center", headerStyle = list(textAlign = "center"), cell = data_bars(pokemon_data, 
         text_position = "outside-base", 
         fill_color = c("#e81cff", "#40c9ff"), 
         background = "#e5e5e5", 
@@ -315,92 +290,64 @@ pokemon_table <- reactable(
         box_shadow = TRUE, 
         round_edges = TRUE
     )),
-    attack = colDef(name = "Attack", align = "center", cell = data_bars(pokemon_data, 
+    attack = colDef(name = "Attack", align = "center", headerStyle = list(textAlign = "center"), cell = data_bars(pokemon_data, 
         text_position = "outside-base", 
         fill_color = c("#e81cff", "#40c9ff"), 
         background = "#e5e5e5", 
         fill_gradient = TRUE, 
         box_shadow = TRUE, 
-        round_edges = TRUE
+        round edges = TRUE
     )),
-    defense = colDef(name = "Defense", align = "center", cell = data_bars(pokemon_data, 
+    defense = colDef(name = "Defense", align = "center", headerStyle = list(textAlign = "center"), cell = data_bars(pokemon_data, 
         text_position = "outside-base", 
         fill_color = c("#e81cff", "#40c9ff"), 
         background = "#e5e5e5", 
         fill_gradient = TRUE, 
         box_shadow = TRUE, 
-        round_edges = TRUE
+        round edges = TRUE
     )),
-    sp_atk = colDef(name = "Sp. Atk", align = "center",
+    sp_atk = colDef(name = "Sp. Atk", align = "center", headerStyle = list(textAlign = "center"),
                     cell = data_bars(pokemon_data, 
         text_position = "outside-base", 
         fill_color = c("#e81cff", "#40c9ff"), 
         background = "#e5e5e5", 
         fill_gradient = TRUE, 
         box_shadow = TRUE, 
-        round_edges = TRUE
+        round edges = TRUE
     )),
-    sp_def = colDef(name = "Sp. Def", align = "center", cell = data_bars(pokemon_data, 
+    sp_def = colDef(name = "Sp. Def", align = "center", headerStyle = list(textAlign = "center"), cell = data_bars(pokemon_data, 
         text_position = "outside-base", 
         fill_color = c("#e81cff", "#40c9ff"), 
         background = "#e5e5e5", 
         fill_gradient = TRUE, 
         box_shadow = TRUE, 
-        round_edges = TRUE
+        round edges = TRUE
     )),
-    speed = colDef(name = "Speed", align = "center", cell = data_bars(pokemon_data, 
+    speed = colDef(name = "Speed", align = "center", headerStyle = list(textAlign = "center"), cell = data_bars(pokemon_data, 
         text_position = "outside-base", 
         fill_color = c("#e81cff", "#40c9ff"), 
         background = "#e5e5e5", 
         fill_gradient = TRUE, 
-        box_shadow = TRUE, 
-        round_edges = TRUE)),
-    height = colDef(name = "Height", align = "center", cell = data_bars(pokemon_data, 
-        text_position = "outside-base", 
-        fill_color = c("#e81cff", "#40c9ff"), 
-        background = "#e5e5e5", 
-        fill_gradient = TRUE, 
-        box_shadow = TRUE, 
-        round_edges = TRUE)),
-    weight = colDef(name = "Weight", align = "center", cell = data_bars(pokemon_data, 
-        text_position = "outside-base", 
-        fill_color = c("#e81cff", "#40c9ff"), 
-        background = "#e5e5e5", 
-        fill_gradient = TRUE, 
-        box_shadow = TRUE, 
-        round_edges = TRUE)),
-    base_experience = colDef(name = "Base Exp.", align = "center", cell = data_bars(pokemon_data, 
-        text_position = "outside-base", 
-        fill_color = c("#e81cff", "#40c9ff"), 
-        background = "#e5e5e5", 
-        fill_gradient = TRUE, 
-        box_shadow = TRUE, 
-        round_edges = TRUE)),
-    base_happiness = colDef(name = "Happiness", align = "center", cell = data_bars(pokemon_data, 
-        text_position = "outside-base", 
-        fill_color = c("#e81cff", "#40c9ff"), 
-        background = "#e5e5e5", 
-        fill_gradient = TRUE, 
-        box_shadow = TRUE, 
-        round_edges = TRUE)),
-    egg_cycles = colDef(name = "Egg Cycles", align = "center"),
-    legendary = colDef(name = "Legendary", align = "center"),
-    mythical = colDef(name = "Mythical", align = "center")
+        box-shadow = TRUE, 
+        round edges = TRUE
+    )),
+    height = colDef(name = "Height", align = "center", headerStyle = list(textAlign = "center")),
+    weight = colDef(name = "Weight", align = "center", headerStyle = list(textAlign = "center")),
+    base_experience = colDef(name = "Base Experience", align = "center", headerStyle = list(textAlign = "center")),
+    egg_cycles = colDef(name = "Egg Cycles", align = "center", headerStyle = list(textAlign = "center")),
+    legendary = colDef(name = "Legendary", align = "center", headerStyle = list(textAlign = "center")),
+    mythical = colDef(name = "Mythical", align = "center", headerStyle = list(textAlign = "center")),
+    base_happiness = colDef(name = "Base Happiness", align = "center", headerStyle = list(textAlign = "center"))
   ),
-  defaultPageSize = 50,
+  defaultPageSize = 10,
   filterable = TRUE,
   style = list(
-    th = list(textTransform = "none")   
+    td = list(verticalAlign = "middle")
   )
-) %>% 
-  add_title(
-    title = reactablefmtr::html("Pokemon Stats Database"), font_size = 40, font_weight = 'bold') #%>%
-  add_source(font_size = 30)
+)
 
 # Save the table as a standalone HTML widget
 htmlwidgets::saveWidget(pokemon_table, "datasets/pokemon_table.html", selfcontained = TRUE)
-
-
 
 ```
 
