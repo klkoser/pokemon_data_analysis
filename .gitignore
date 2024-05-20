@@ -2,3 +2,12 @@
 .Rhistory
 .RData
 .Ruserdata
+
+
+# Ignore downloaded files
+fetch_data/data
+
+
+# Ignore Python cache files
+fetch_data/scripts/__pycache__/
+*.py[cod]
